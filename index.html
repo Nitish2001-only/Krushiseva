@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Product List</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    h2 { margin-bottom: 20px; }
+    input[type="text"] {
+      padding: 10px; width: 100%; max-width: 400px;
+      margin-bottom: 20px; border-radius: 5px; border: 1px solid #ccc;
+    }
+    .product {
+      border-bottom: 1px solid #ddd; padding: 10px 0;
+    }
+    .product-name { font-weight: bold; font-size: 18px; }
+    .company-name { font-size: 14px; color: gray; }
+    .add-btn {
+      display: inline-block; padding: 10px 20px; margin-bottom: 20px;
+      background-color: #28a745; color: white;
+      text-decoration: none; border-radius: 5px;
+    }
+    .add-btn:hover { background-color: #218838; }
+  </style>
+</head>
+<body>
+
+  <h2>📦 Product List</h2>
+  <a class="add-btn" href="addproduct.html">➕ Add Product</a>
+  <input type="text" id="search" placeholder="Search Product Name...">
+
+  <div id="productList"></div>
+
+  <script>
+    const API = 'https://script.google.com/macros/s/AKfycbxpMMUGmDN8_5ekS7NaipRO4Qx0wIT6Ed8pBGxeBQRy7k2p81OFzmht3XVcJ8WKZXn1kg/exec';
+    let allProducts = [];
+
+    function renderProducts(list) {
+      const container = document.getElementById('productList');
+      container.innerHTML = '';
+      if (list.length === 0) {
+        container.innerHTML = '<p>No products found.</p>';
+        return;
+      }
+      list.forEach(p => {
+        const name = p["Product Name"] || '(Unnamed)';
+        const company = p["Company_Name"] || 'Unknown Company';
+        const el = document.createElement('div');
+        el.className = 'product';
+        el.innerHTML = `
+          <div class="product-name">${name}</div>
+          <div class="company-name">${company}</div>
+        `;
+        el.addEventListener('click', () => {
+          window.location.href = `product.html?id=${p.SR_NO}`;
+        });
+        container.appendChild(el);
+      });
+    }
+
+    function syncLoop() {
+      setInterval(async () => {
+        try {
+          const res = await fetch(API + '?mode=all');
+          const json = await res.json();
+          if (json.data) {
+            allProducts = json.data;
+            localStorage.setItem('products', JSON.stringify(allProducts));
+            localStorage.setItem('lastSync', json.lastModified);
+            const searchVal = document.getElementById('search').value.toLowerCase();
+            const filtered = allProducts.filter(p => (p["Product Name"] || '').toLowerCase().includes(searchVal));
+            renderProducts(filtered);
+          }
+        } catch (err) {
+          console.error('Sync error:', err);
+        }
+      }, 1500);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      allProducts = JSON.parse(localStorage.getItem('products') || '[]');
+      renderProducts(allProducts);
+
+      document.getElementById('search').addEventListener('input', e => {
+        const val = e.target.value.toLowerCase();
+        const filtered = allProducts.filter(p => (p["Product Name"] || '').toLowerCase().includes(val));
+        renderProducts(filtered);
+      });
+
+      syncLoop();
+    });
+  </script>
+</body>
+</html>

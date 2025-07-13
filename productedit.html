@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Product</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+    h2 { margin-bottom: 20px; }
+    label { display: block; margin-top: 10px; font-weight: bold; }
+    input[type="text"], input[type="number"] {
+      width: 100%; padding: 10px; margin-top: 5px;
+      border: 1px solid #ccc; border-radius: 5px; font-size: 14px;
+    }
+    button {
+      margin-top: 20px; padding: 10px 20px;
+      background-color: #007bff; color: white;
+      border: none; border-radius: 5px; font-size: 16px;
+      cursor: pointer;
+    }
+    button:hover { background-color: #0056b3; }
+    .status { margin-top: 15px; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <h2>✏️ Edit Product</h2>
+
+  <form id="editForm">
+    <label>Product Name</label>
+    <input type="text" id="productName" required>
+
+    <label>Company Name</label>
+    <input type="text" id="companyName" required>
+
+    <label>Cost</label>
+    <input type="number" id="cost" step="0.01" required>
+
+    <label>Cash</label>
+    <input type="number" id="cash" step="0.01" required>
+
+    <label>Credit</label>
+    <input type="number" id="credit" step="0.01" required>
+
+    <button type="submit">Update Product</button>
+  </form>
+
+  <div class="status" id="status"></div>
+
+  <script>
+    const API = 'https://script.google.com/macros/s/AKfycbxpMMUGmDN8_5ekS7NaipRO4Qx0wIT6Ed8pBGxeBQRy7k2p81OFzmht3XVcJ8WKZXn1kg/exec';
+    const params = new URLSearchParams(window.location.search);
+    const productId = params.get('id');
+    let productData = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const allProducts = JSON.parse(localStorage.getItem('products') || '[]');
+      const found = allProducts.find(p => p.SR_NO == productId);
+      if (!found) {
+        document.getElementById('status').textContent = '❌ Product not found';
+        return;
+      }
+
+      productData = found;
+      document.getElementById('productName').value = productData["Product Name"] || '';
+      document.getElementById('companyName').value = productData["Company_Name"] || '';
+      document.getElementById('cost').value = productData["Cost"] || '';
+      document.getElementById('cash').value = productData["Cash"] || '';
+      document.getElementById('credit').value = productData["Credit"] || '';
+    });
+
+    document.getElementById('editForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const updatedProduct = {
+        SR_NO: productId,
+        "Product Name": document.getElementById('productName').value.trim(),
+        "Company_Name": document.getElementById('companyName').value.trim(),
+        "Cost": document.getElementById('cost').value.trim(),
+        "Cash": document.getElementById('cash').value.trim(),
+        "Credit": document.getElementById('credit').value.trim()
+      };
+
+      const payload = {
+        update: [updatedProduct],
+        lastSync: localStorage.getItem('lastSync') || ''
+      };
+
+      try {
+        const res = await fetch(API, {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+
+        if (result.success !== false) {
+          const local = JSON.parse(localStorage.getItem('products') || '[]');
+          const updated = local.map(p => p.SR_NO == productId ? updatedProduct : p);
+          localStorage.setItem('products', JSON.stringify(updated));
+          localStorage.setItem('lastSync', result.lastModified || new Date().toISOString());
+          document.getElementById('status').textContent = '✅ Product updated successfully';
+        } else {
+          document.getElementById('status').textContent = '❌ Failed to update product';
+        }
+      } catch (err) {
+        console.error(err);
+        document.getElementById('status').textContent = '❌ Error: ' + err.message;
+      }
+    });
+  </script>
+
+</body>
+</html>

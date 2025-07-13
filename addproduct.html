@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Add New Product</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+    h2 { margin-bottom: 20px; }
+    label { display: block; margin-top: 10px; font-weight: bold; }
+    input[type="text"], input[type="number"] {
+      width: 100%; padding: 10px; margin-top: 5px;
+      border: 1px solid #ccc; border-radius: 5px; font-size: 14px;
+    }
+    button {
+      margin-top: 20px; padding: 10px 20px;
+      background-color: #007bff; color: white;
+      border: none; border-radius: 5px; font-size: 16px;
+      cursor: pointer;
+    }
+    button:hover { background-color: #0056b3; }
+    .status { margin-top: 15px; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <h2>➕ Add New Product</h2>
+
+  <form id="productForm">
+    <label>Product Name</label>
+    <input type="text" id="productName" required>
+
+    <label>Company Name</label>
+    <input type="text" id="companyName" required>
+
+    <label>Cost</label>
+    <input type="number" id="cost" step="0.01" required>
+
+    <label>Cash</label>
+    <input type="number" id="cash" step="0.01" required>
+
+    <label>Credit</label>
+    <input type="number" id="credit" step="0.01" required>
+
+    <button type="submit">Add Product</button>
+  </form>
+
+  <div class="status" id="status"></div>
+
+  <script>
+    const API = 'https://script.google.com/macros/s/AKfycbxpMMUGmDN8_5ekS7NaipRO4Qx0wIT6Ed8pBGxeBQRy7k2p81OFzmht3XVcJ8WKZXn1kg/exec';
+    let localData = [];
+
+    async function fetchLatestData() {
+      try {
+        const res = await fetch(API + '?mode=all');
+        const json = await res.json();
+        if (json.data) {
+          localData = json.data;
+          localStorage.setItem('products', JSON.stringify(localData));
+          localStorage.setItem('lastSync', json.lastModified || new Date().toISOString());
+        }
+      } catch (err) {
+        console.error('Failed to fetch latest data:', err);
+      }
+    }
+
+    function generateNextSRNo() {
+      const existing = localData.map(p => parseInt(p.SR_NO)).filter(n => !isNaN(n));
+      return existing.length ? Math.max(...existing) + 1 : 1;
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await fetchLatestData();
+
+      document.getElementById('productForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const newProduct = {
+          SR_NO: generateNextSRNo(),
+          'Product Name ': document.getElementById('productName').value.trim(),
+          'Company_Name ': document.getElementById('companyName').value.trim(),
+          'Cost': document.getElementById('cost').value.trim(),
+          'Cash': document.getElementById('cash').value.trim(),
+          'Credit': document.getElementById('credit').value.trim()
+        };
+
+        const payload = {
+          add: [newProduct],
+          lastSync: localStorage.getItem('lastSync') || ''
+        };
+
+        try {
+          const res = await fetch(API, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+          });
+          const result = await res.json();
+
+          if (result.success) {
+            localData.push(newProduct);
+            localStorage.setItem('products', JSON.stringify(localData));
+            localStorage.setItem('lastSync', result.lastModified || new Date().toISOString());
+            document.getElementById('status').textContent = '✅ Product added successfully';
+            document.getElementById('productForm').reset();
+          } else {
+            document.getElementById('status').textContent = '❌ Failed to add product';
+          }
+        } catch (err) {
+          console.error(err);
+          document.getElementById('status').textContent = '❌ Error: ' + err.message;
+        }
+      });
+    });
+  </script>
+
+</body>
+</html>
